@@ -1,0 +1,282 @@
+#!/bin/bash
+# SpecOps pre-commit hook
+# Runs fast, targeted checks on staged files before committing.
+# Bypass with: git commit --no-verify
+
+set -e
+
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+
+# --- Color helpers (respect NO_COLOR) ---
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+  RED='\033[0;31m'
+  GREEN='\033[0;32m'
+  YELLOW='\033[0;33m'
+  BOLD='\033[1m'
+  RESET='\033[0m'
+else
+  RED=''
+  GREEN=''
+  YELLOW=''
+  BOLD=''
+  RESET=''
+fi
+
+ERRORS=0
+
+# Get list of staged files (added, copied, modified — not deleted)
+STAGED_FILES="$(git diff --cached --name-only --diff-filter=ACM)"
+
+if [ -z "$STAGED_FILES" ]; then
+  exit 0
+fi
+
+# --- Check 1: JSON syntax for staged .json files ---
+STAGED_JSON="$(echo "$STAGED_FILES" | grep '\.json$' || true)"
+if [ -n "$STAGED_JSON" ]; then
+  while IFS= read -r json_file; do
+    if [ -f "$ROOT_DIR/$json_file" ]; then
+      if ! python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$ROOT_DIR/$json_file" 2>/dev/null; then
+        printf '%b' "${RED}FAIL${RESET} Invalid JSON: ${json_file}\n"
+        ERRORS=$((ERRORS + 1))
+      fi
+    fi
+  done <<< "$STAGED_JSON"
+fi
+
+# --- Check 2: ShellCheck for staged .sh files ---
+STAGED_SH="$(echo "$STAGED_FILES" | grep '\.sh$' || true)"
+if [ -n "$STAGED_SH" ] && command -v shellcheck &>/dev/null; then
+  while IFS= read -r sh_file; do
+    if [ -f "$ROOT_DIR/$sh_file" ]; then
+      if ! shellcheck "$ROOT_DIR/$sh_file" 2>/dev/null; then
+        printf '%b' "${RED}FAIL${RESET} ShellCheck: ${sh_file}\n"
+        ERRORS=$((ERRORS + 1))
+      fi
+    fi
+  done <<< "$STAGED_SH"
+elif [ -n "$STAGED_SH" ]; then
+  printf '%b' "${YELLOW}SKIP${RESET} ShellCheck not installed (brew install shellcheck)\n"
+fi
+
+# --- Check 3: Stale generated platform files ---
+# If core/, generator/templates/, or platform.json changed, generated outputs must also be staged.
+NEEDS_REBUILD=false
+if echo "$STAGED_FILES" | grep -q "^core/"; then
+  NEEDS_REBUILD=true
+fi
+if echo "$STAGED_FILES" | grep -q "^generator/templates/"; then
+  NEEDS_REBUILD=true
+fi
+if echo "$STAGED_FILES" | grep -q "^generator/generate\.py$"; then
+  NEEDS_REBUILD=true
+fi
+if echo "$STAGED_FILES" | grep -q "^platforms/.*/platform\.json$"; then
+  NEEDS_REBUILD=true
+fi
+
+if [ "$NEEDS_REBUILD" = true ]; then
+  GENERATED_FILES=(
+    "platforms/claude/SKILL.md"
+    "platforms/cursor/specops.mdc"
+    "platforms/codex/SKILL.md"
+    "platforms/copilot/specops.instructions.md"
+    "platforms/antigravity/specops.md"
+    "skills/specops/SKILL.md"
+    ".claude-plugin/plugin.json"
+    ".claude-plugin/marketplace.json"
+  )
+
+  # Check if any generated file is staged (covers the common case)
+  ANY_GENERATED_STAGED=false
+  for gf in "${GENERATED_FILES[@]}"; do
+    if echo "$STAGED_FILES" | grep -q "^${gf}$"; then
+      ANY_GENERATED_STAGED=true
+      break
+    fi
+  done
+
+  # If none staged, verify they are actually up-to-date on disk.
+  # This handles cases like version-only bumps in platform.json where
+  # the generated output is unchanged (version isn't embedded in output).
+  if [ "$ANY_GENERATED_STAGED" = false ]; then
+    GENERATED_STALE=false
+    if command -v python3 &>/dev/null; then
+      # Hash current generated files, regenerate in-place, compare hashes
+      BEFORE_HASHES=""
+      for gf in "${GENERATED_FILES[@]}"; do
+        if [ -f "$ROOT_DIR/$gf" ]; then
+          BEFORE_HASHES="${BEFORE_HASHES}$(shasum -a 256 "$ROOT_DIR/$gf")"$'\n'
+        fi
+      done
+
+      python3 "$ROOT_DIR/generator/generate.py" --all >/dev/null 2>&1
+
+      for gf in "${GENERATED_FILES[@]}"; do
+        if [ -f "$ROOT_DIR/$gf" ]; then
+          CURRENT_HASH="$(shasum -a 256 "$ROOT_DIR/$gf")"
+          if ! echo "$BEFORE_HASHES" | grep -qF "$CURRENT_HASH"; then
+            GENERATED_STALE=true
+            break
+          fi
+        fi
+      done
+    else
+      GENERATED_STALE=true
+    fi
+
+    if [ "$GENERATED_STALE" = true ]; then
+      printf '%b' "${RED}FAIL${RESET} Source files changed but generated platform files are not staged.\n"
+      printf '%b' "  Run: ${BOLD}python3 generator/generate.py --all${RESET}\n"
+      printf "  Then stage the generated files and commit again.\n"
+      ERRORS=$((ERRORS + 1))
+    fi
+  fi
+fi
+
+# --- Check 4: Stale checksums ---
+# If any checksummed file is staged but CHECKSUMS.sha256 is not, block.
+CHECKSUMMED_FILES=(
+  "skills/specops/SKILL.md"
+  "schema.json"
+  "platforms/claude/SKILL.md"
+  "platforms/claude/platform.json"
+  "platforms/cursor/specops.mdc"
+  "platforms/cursor/platform.json"
+  "platforms/codex/SKILL.md"
+  "platforms/codex/platform.json"
+  "platforms/copilot/specops.instructions.md"
+  "platforms/copilot/platform.json"
+  "platforms/antigravity/specops.md"
+  "platforms/antigravity/platform.json"
+  "core/workflow.md"
+  "core/safety.md"
+  "core/reconciliation.md"
+  "core/engineering-discipline.md"
+  "core/writing-quality.md"
+  "hooks/pre-commit"
+  "hooks/pre-push"
+  "scripts/install-hooks.sh"
+  ".claude-plugin/plugin.json"
+  ".claude-plugin/marketplace.json"
+)
+
+CHECKSUMMED_STAGED=false
+for cf in "${CHECKSUMMED_FILES[@]}"; do
+  if echo "$STAGED_FILES" | grep -q "^${cf}$"; then
+    CHECKSUMMED_STAGED=true
+    break
+  fi
+done
+
+CHECKSUMS_FILE_STAGED=false
+if echo "$STAGED_FILES" | grep -q "^CHECKSUMS\.sha256$"; then
+  CHECKSUMS_FILE_STAGED=true
+fi
+
+if [ "$CHECKSUMMED_STAGED" = true ] && [ "$CHECKSUMS_FILE_STAGED" = false ]; then
+  printf '%b' "${RED}FAIL${RESET} Checksummed files changed but CHECKSUMS.sha256 is not staged.\n"
+  printf "  Regenerate checksums:\n"
+  printf '%b' "  ${BOLD}shasum -a 256 skills/specops/SKILL.md schema.json platforms/claude/SKILL.md \\\\${RESET}\n"
+  printf '%b' "  ${BOLD}  platforms/claude/platform.json platforms/cursor/specops.mdc \\\\${RESET}\n"
+  printf '%b' "  ${BOLD}  platforms/cursor/platform.json platforms/codex/SKILL.md \\\\${RESET}\n"
+  printf '%b' "  ${BOLD}  platforms/codex/platform.json platforms/copilot/specops.instructions.md \\\\${RESET}\n"
+  printf '%b' "  ${BOLD}  platforms/copilot/platform.json platforms/antigravity/specops.md \\\\${RESET}\n"
+  printf '%b' "  ${BOLD}  platforms/antigravity/platform.json core/workflow.md core/safety.md \\\\${RESET}\n"
+  printf '%b' "  ${BOLD}  core/reconciliation.md core/engineering-discipline.md \\\\${RESET}\n"
+  printf '%b' "  ${BOLD}  core/writing-quality.md hooks/pre-commit hooks/pre-push \\\\${RESET}\n"
+  printf '%b' "  ${BOLD}  scripts/install-hooks.sh \\\\${RESET}\n"
+  printf '%b' "  ${BOLD}  .claude-plugin/plugin.json .claude-plugin/marketplace.json > CHECKSUMS.sha256${RESET}\n"
+  printf '%b' "  Then: ${BOLD}git add CHECKSUMS.sha256${RESET}\n"
+  ERRORS=$((ERRORS + 1))
+fi
+
+# --- Check 5: PII and absolute path detection ---
+# Prevent personal emails in spec metadata and absolute paths in committed files.
+
+# 5a: Real email addresses in .specops/**/*.json
+# Note: spec-schema.json uses additionalProperties:false without an "email" property,
+# so valid specs won't contain email fields. This check is a safety net for legacy or
+# manually-crafted specs that bypass schema validation.
+STAGED_SPEC_JSON="$(echo "$STAGED_FILES" | grep '^\.specops/.*\.json$' || true)"
+if [ -n "$STAGED_SPEC_JSON" ]; then
+  while IFS= read -r spec_file; do
+    if [ -f "$ROOT_DIR/$spec_file" ]; then
+      # Match "email": "..." lines with real-looking emails (has @, not safe domains)
+      if grep -nE '"email"\s*:\s*"[^"]+@' "$ROOT_DIR/$spec_file" \
+         | grep -vE '@(example\.com|acme\.com|users\.noreply\.github\.com|test\.com)"' \
+         | grep -vE '"email"\s*:\s*""' > /dev/null 2>&1; then
+        printf '%b' "${RED}FAIL${RESET} Personal email detected in: ${spec_file}\n"
+        printf "  Spec metadata should not contain personal email addresses.\n"
+        printf "  Remove the email field or use a noreply address.\n"
+        ERRORS=$((ERRORS + 1))
+      fi
+    fi
+  done <<< "$STAGED_SPEC_JSON"
+fi
+
+# 5b: Absolute home directory paths in any staged file
+while IFS= read -r staged_file; do
+  if [ -f "$ROOT_DIR/$staged_file" ]; then
+    if grep -nE '(/Users/[a-zA-Z0-9._-]+/|/home/[a-zA-Z0-9._-]+/)' "$ROOT_DIR/$staged_file" > /dev/null 2>&1; then
+      printf '%b' "${RED}FAIL${RESET} Absolute path detected in: ${staged_file}\n"
+      printf "  Do not commit files containing absolute home directory paths.\n"
+      printf "  Use relative paths instead.\n"
+      ERRORS=$((ERRORS + 1))
+    fi
+  fi
+done <<< "$STAGED_FILES"
+
+# 5c: Symlinks with absolute targets
+# Check all staged files for symlinks rather than parsing raw diff mode fields,
+# which is more portable across git versions.
+while IFS= read -r staged_file; do
+  if [ -L "$ROOT_DIR/$staged_file" ]; then
+    SYM_TARGET="$(readlink "$ROOT_DIR/$staged_file")"
+    case "$SYM_TARGET" in /*)
+      printf '%b' "${RED}FAIL${RESET} Absolute symlink target in: ${staged_file}\n"
+      printf "  Target: %s\n" "$SYM_TARGET"
+      printf "  Use a relative symlink instead.\n"
+      ERRORS=$((ERRORS + 1))
+      ;; esac
+  fi
+done <<< "$STAGED_FILES"
+
+# --- Check 6: Spec artifact checkbox staleness ---
+STAGED_SPECS="$(echo "$STAGED_FILES" | grep '^\.specops/' || true)"
+if [ -n "$STAGED_SPECS" ] && [ -f "$ROOT_DIR/scripts/lint-specs.sh" ]; then
+  if ! SPEC_LINT_OUTPUT="$(bash "$ROOT_DIR/scripts/lint-specs.sh" 2>&1)"; then
+    printf '%b' "${RED}FAIL${RESET} Checkbox staleness in spec artifacts.\n"
+    printf '%s\n' "$SPEC_LINT_OUTPUT"
+    ERRORS=$((ERRORS + 1))
+  fi
+fi
+
+# --- Check 7: Markdown lint for staged .md files ---
+STAGED_MD="$(echo "$STAGED_FILES" | grep -E '^(core/|docs/|\.claude/commands/|README\.md$|CLAUDE\.md$|QUICKSTART\.md$|CONTRIBUTING\.md$|CHANGELOG\.md$)' | grep '\.md$' || true)"
+if [ -n "$STAGED_MD" ] && command -v npx &>/dev/null; then
+  MD_ARGS=()
+  while IFS= read -r md_file; do
+    if [ -f "$ROOT_DIR/$md_file" ]; then
+      MD_ARGS+=("$ROOT_DIR/$md_file")
+    fi
+  done <<< "$STAGED_MD"
+  if [ "${#MD_ARGS[@]}" -gt 0 ]; then
+    if ! npx markdownlint-cli2 "${MD_ARGS[@]}" 2>/dev/null; then
+      printf '%b' "${RED}FAIL${RESET} Markdown lint errors in staged .md files.\n"
+      ERRORS=$((ERRORS + 1))
+    fi
+  fi
+elif [ -n "$STAGED_MD" ]; then
+  printf '%b' "${YELLOW}SKIP${RESET} Markdown lint (npx not installed)\n"
+fi
+
+# --- Summary ---
+if [ "$ERRORS" -gt 0 ]; then
+  printf '%b' "\n${RED}${BOLD}Pre-commit failed with ${ERRORS} error(s).${RESET}\n"
+  printf "Bypass with: git commit --no-verify\n"
+  exit 1
+fi
+
+printf '%b' "${GREEN}Pre-commit checks passed.${RESET}\n"
+exit 0

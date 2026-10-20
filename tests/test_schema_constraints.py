@@ -1,0 +1,208 @@
+"""Test that schema.json correctly rejects invalid configuration values.
+
+These tests verify the hardening constraints: path validation, maxLength,
+maxItems, and additionalProperties enforcement.
+"""
+
+import json
+import sys
+
+try:
+    from jsonschema import validate, ValidationError
+except ImportError:
+    print("ERROR: jsonschema package required. Install with: pip install jsonschema")
+    sys.exit(1)
+
+
+def load_schema():
+    with open("schema.json") as f:
+        return json.load(f)
+
+
+def expect_valid(schema, config, description):
+    """Assert that config validates successfully."""
+    try:
+        validate(instance=config, schema=schema)
+        print(f"PASS: {description}")
+        return True
+    except ValidationError as e:
+        print(f"FAIL: {description} - expected valid but got: {e.message}")
+        return False
+
+
+def expect_invalid(schema, config, description):
+    """Assert that config fails validation."""
+    try:
+        validate(instance=config, schema=schema)
+        print(f"FAIL: {description} - expected rejection but config was accepted")
+        return False
+    except ValidationError:
+        print(f"PASS: {description}")
+        return True
+
+
+def main():
+    schema = load_schema()
+    passed = 0
+    failed = 0
+
+    def check(result):
+        nonlocal passed, failed
+        if result:
+            passed += 1
+        else:
+            failed += 1
+
+    # --- Valid configs ---
+    check(expect_valid(schema, {"specsDir": ".specops"}, "Minimal config is valid"))
+    check(expect_valid(schema, {"specsDir": "specs/output"}, "specsDir with subdirectory is valid"))
+    check(expect_valid(schema, {
+        "specsDir": ".specops",
+        "team": {"conventions": ["Use camelCase", "All APIs need input validation"]}
+    }, "Config with conventions is valid"))
+
+    # --- specsDir path validation ---
+    check(expect_invalid(schema, {"specsDir": "/etc/passwd"}, "Rejects absolute path in specsDir"))
+    check(expect_invalid(schema, {"specsDir": "../../../etc"}, "Rejects path traversal in specsDir"))
+    check(expect_invalid(schema, {"specsDir": "a" * 201}, "Rejects specsDir exceeding maxLength"))
+    check(expect_invalid(schema, {"specsDir": "path with spaces"}, "Rejects specsDir with spaces"))
+
+    # --- String maxLength ---
+    check(expect_invalid(schema, {
+        "templates": {"feature": "a" * 101}
+    }, "Rejects template name exceeding maxLength"))
+
+    # --- Convention constraints ---
+    check(expect_invalid(schema, {
+        "team": {"conventions": ["a" * 501]}
+    }, "Rejects convention string exceeding maxLength"))
+    check(expect_invalid(schema, {
+        "team": {"conventions": ["convention"] * 31}
+    }, "Rejects conventions array exceeding maxItems"))
+
+    # --- additionalProperties enforcement ---
+    check(expect_invalid(schema, {
+        "unknownField": "value"
+    }, "Rejects unknown root-level property"))
+    check(expect_invalid(schema, {
+        "templates": {"feature": "default", "unknownTemplate": "value"}
+    }, "Rejects unknown property in templates"))
+    check(expect_invalid(schema, {
+        "team": {"conventions": [], "unknownField": "value"}
+    }, "Rejects unknown property in team"))
+    check(expect_invalid(schema, {
+        "team": {"codeReview": {"required": True, "unknownField": "value"}}
+    }, "Rejects unknown property in team.codeReview"))
+    check(expect_invalid(schema, {
+        "implementation": {"autoCommit": False, "unknownField": "value"}
+    }, "Rejects unknown property in implementation"))
+
+    # --- specReview constraints ---
+    check(expect_valid(schema, {
+        "team": {"specReview": {"enabled": True, "minApprovals": 2}}
+    }, "Valid specReview config"))
+    check(expect_valid(schema, {
+        "team": {"specReview": {"enabled": False}}
+    }, "specReview with only enabled is valid"))
+    check(expect_invalid(schema, {
+        "team": {"specReview": {"enabled": True, "minApprovals": 0}}
+    }, "Rejects minApprovals < 1"))
+    check(expect_invalid(schema, {
+        "team": {"specReview": {"enabled": True, "minApprovals": 11}}
+    }, "Rejects minApprovals > 10"))
+    check(expect_invalid(schema, {
+        "team": {"specReview": {"enabled": True, "unknownField": "value"}}
+    }, "Rejects unknown property in specReview"))
+
+    # --- allowSelfApproval constraints ---
+    check(expect_valid(schema, {
+        "team": {"specReview": {"enabled": True, "allowSelfApproval": True}}
+    }, "Valid specReview with allowSelfApproval true"))
+    check(expect_valid(schema, {
+        "team": {"specReview": {"enabled": True, "allowSelfApproval": False}}
+    }, "Valid specReview with allowSelfApproval false"))
+    check(expect_invalid(schema, {
+        "team": {"specReview": {"enabled": True, "allowSelfApproval": "yes"}}
+    }, "Rejects non-boolean allowSelfApproval"))
+
+    # --- Workflow automation config constraints ---
+    check(expect_valid(schema, {
+        "implementation": {"validateReferences": "off"}
+    }, "Valid validateReferences off"))
+    check(expect_valid(schema, {
+        "implementation": {"validateReferences": "warn"}
+    }, "Valid validateReferences warn"))
+    check(expect_valid(schema, {
+        "implementation": {"validateReferences": "strict"}
+    }, "Valid validateReferences strict"))
+    check(expect_invalid(schema, {
+        "implementation": {"validateReferences": "invalid"}
+    }, "Rejects invalid validateReferences enum value"))
+
+    check(expect_valid(schema, {
+        "implementation": {"gitCheckpointing": True}
+    }, "Valid gitCheckpointing true"))
+    check(expect_valid(schema, {
+        "implementation": {"gitCheckpointing": False}
+    }, "Valid gitCheckpointing false"))
+    check(expect_invalid(schema, {
+        "implementation": {"gitCheckpointing": "yes"}
+    }, "Rejects non-boolean gitCheckpointing"))
+
+    check(expect_valid(schema, {
+        "implementation": {"pipelineMaxCycles": 1}
+    }, "Valid pipelineMaxCycles min"))
+    check(expect_valid(schema, {
+        "implementation": {"pipelineMaxCycles": 10}
+    }, "Valid pipelineMaxCycles max"))
+    check(expect_invalid(schema, {
+        "implementation": {"pipelineMaxCycles": 0}
+    }, "Rejects pipelineMaxCycles < 1"))
+    check(expect_invalid(schema, {
+        "implementation": {"pipelineMaxCycles": 15}
+    }, "Rejects pipelineMaxCycles > 10"))
+    check(expect_invalid(schema, {
+        "implementation": {"pipelineMaxCycles": 3.5}
+    }, "Rejects non-integer pipelineMaxCycles"))
+
+    check(expect_valid(schema, {
+        "implementation": {"delegationThreshold": 1}
+    }, "Valid delegationThreshold min"))
+    check(expect_valid(schema, {
+        "implementation": {"delegationThreshold": 4}
+    }, "Valid delegationThreshold default"))
+    check(expect_valid(schema, {
+        "implementation": {"delegationThreshold": 20}
+    }, "Valid delegationThreshold max"))
+    check(expect_invalid(schema, {
+        "implementation": {"delegationThreshold": 0}
+    }, "Rejects delegationThreshold < 1"))
+    check(expect_invalid(schema, {
+        "implementation": {"delegationThreshold": 21}
+    }, "Rejects delegationThreshold > 20"))
+    check(expect_invalid(schema, {
+        "implementation": {"delegationThreshold": 3.5}
+    }, "Rejects non-integer delegationThreshold"))
+
+    # --- Module constraints ---
+    check(expect_invalid(schema, {
+        "modules": {"frontend": {"specsDir": "../../../etc"}}
+    }, "Rejects path traversal in module specsDir"))
+    check(expect_invalid(schema, {
+        "modules": {"frontend": {"conventions": ["a" * 501]}}
+    }, "Rejects module convention exceeding maxLength"))
+    check(expect_invalid(schema, {
+        "modules": {"frontend": {"conventions": ["c"] * 31}}
+    }, "Rejects module conventions exceeding maxItems"))
+    check(expect_invalid(schema, {
+        "modules": {"frontend": {"unknownField": "value"}}
+    }, "Rejects unknown property in module"))
+
+    # --- Summary ---
+    print(f"\n{passed} passed, {failed} failed out of {passed + failed} tests")
+    if failed > 0:
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

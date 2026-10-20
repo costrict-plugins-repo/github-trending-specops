@@ -1,0 +1,65 @@
+{
+  "name": "claude",
+  "displayName": "Claude Code",
+  "version": "1.8.0",
+  "instructionFormat": "skill",
+  "outputFiles": {
+    "skill": "SKILL.md"
+  },
+  "installLocation": {
+    "user": "~/.claude/skills/specops",
+    "project": "./.claude/skills/specops"
+  },
+  "capabilities": {
+    "canExecuteCode": true,
+    "canEditFiles": true,
+    "canCreateFiles": true,
+    "canAskInteractive": true,
+    "canTrackProgress": true,
+    "canAccessGit": true,
+    "canDelegateTask": true
+  },
+  "planFileDirectory": "~/.claude/plans",
+  "toolMapping": {
+    "READ_FILE": "Use the Read tool to read",
+    "WRITE_FILE": "Use the Write tool to create",
+    "EDIT_FILE": "Use the Edit tool to modify",
+    "LIST_DIR": "Use the Glob tool to list",
+    "FILE_EXISTS": "Use the Bash tool to check if the file exists at",
+    "RUN_COMMAND": "Use the Bash tool to run",
+    "ASK_USER": "Use the AskUserQuestion tool",
+    "NOTIFY_USER": "Display a message to the user",
+    "UPDATE_PROGRESS": "Use the TodoWrite tool to update",
+    "GET_SPECOPS_VERSION": "Use the Bash tool to run `grep -h '^version:' .claude/skills/specops/SKILL.md ~/.claude/skills/specops/SKILL.md 2>/dev/null | head -1 | sed 's/version: *\"//;s/\"//g'`"
+  },
+  "entryPoint": {
+    "type": "slash_command",
+    "command": "/specops",
+    "usage": "/specops [mode] [description]",
+    "examples": [
+      "/specops",
+      "/specops version",
+      "/specops init",
+      "/specops interview Build a dashboard",
+      "/specops spec Add user authentication",
+      "/specops refactor Simplify auth middleware",
+      "/specops bugfix Users seeing 500 on checkout",
+      "/specops implement auth-feature",
+      "/specops review oauth-auth",
+      "/specops revise oauth-auth",
+      "/specops status",
+      "/specops status draft",
+      "/specops status in-review",
+      "/specops view auth-feature",
+      "/specops view auth-feature design",
+      "/specops view auth-feature full",
+      "/specops view auth-feature status",
+      "/specops view auth-feature walkthrough",
+      "/specops view auth-feature requirements design",
+      "/specops list",
+      "/specops update",
+      "/specops feedback",
+      "/specops pipeline auth-feature"
+    ]
+  }
+}

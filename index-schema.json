@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SpecOps Spec Index",
+  "description": "Auto-generated global index of all specs. Rebuilt from per-spec spec.json files after every mutation.",
+  "type": "array",
+  "maxItems": 200,
+  "items": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "maxLength": 100,
+        "description": "Spec identifier matching the directory name"
+      },
+      "type": {
+        "type": "string",
+        "enum": ["feature", "bugfix", "refactor"],
+        "description": "Type of specification"
+      },
+      "status": {
+        "type": "string",
+        "enum": ["draft", "in-review", "approved", "self-approved", "implementing", "completed"],
+        "description": "Current lifecycle status"
+      },
+      "version": {
+        "type": "integer",
+        "minimum": 1,
+        "description": "Spec version"
+      },
+      "author": {
+        "type": "string",
+        "maxLength": 100,
+        "description": "Author name (from spec.json author.name)"
+      },
+      "updated": {
+        "type": "string",
+        "maxLength": 30,
+        "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(Z|[+-]\\d{2}:\\d{2})$",
+        "description": "ISO 8601 timestamp of last spec.json update"
+      },
+      "partOf": {
+        "type": "string",
+        "maxLength": 100,
+        "pattern": "^(?!\\.{1,2}$)[a-zA-Z0-9._-]+$",
+        "description": "Initiative ID this spec belongs to"
+      }
+    },
+    "required": ["id", "type", "status", "version", "author", "updated"],
+    "additionalProperties": false
+  }
+}

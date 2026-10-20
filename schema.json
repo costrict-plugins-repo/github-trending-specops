@@ -1,0 +1,322 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SpecOps Configuration",
+  "description": "Configuration schema for SpecOps spec-driven development workflow",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON schema reference"
+    },
+    "specsDir": {
+      "type": "string",
+      "default": ".specops",
+      "description": "Directory where specification files are stored. Must be a relative path within the project.",
+      "pattern": "^(?!.*\\.\\./)[a-zA-Z0-9._][a-zA-Z0-9._/-]*$",
+      "maxLength": 200
+    },
+    "vertical": {
+      "type": "string",
+      "enum": ["backend", "frontend", "fullstack", "infrastructure", "data", "library", "builder", "migration"],
+      "description": "Project vertical that influences spec template adaptation. Auto-detected when not set."
+    },
+    "templates": {
+      "type": "object",
+      "description": "Template configuration for different spec types",
+      "properties": {
+        "feature": {
+          "type": "string",
+          "default": "default",
+          "maxLength": 100,
+          "description": "Template name for feature specifications"
+        },
+        "bugfix": {
+          "type": "string",
+          "default": "default",
+          "maxLength": 100,
+          "description": "Template name for bug fix specifications"
+        },
+        "refactor": {
+          "type": "string",
+          "default": "default",
+          "maxLength": 100,
+          "description": "Template name for refactoring specifications"
+        },
+        "design": {
+          "type": "string",
+          "default": "default",
+          "maxLength": 100,
+          "description": "Template name for design specifications"
+        },
+        "tasks": {
+          "type": "string",
+          "default": "default",
+          "maxLength": 100,
+          "description": "Template name for task breakdown specifications"
+        }
+      },
+      "additionalProperties": false
+    },
+    "team": {
+      "type": "object",
+      "description": "Team collaboration settings",
+      "properties": {
+        "conventions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "maxItems": 30,
+          "description": "List of team-specific development conventions to follow"
+        },
+        "reviewRequired": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether spec review is required before implementation"
+        },
+        "taskTracking": {
+          "type": "string",
+          "enum": ["github", "jira", "linear", "none"],
+          "default": "none",
+          "description": "Task tracking system integration"
+        },
+        "codeReview": {
+          "type": "object",
+          "description": "Code review requirements",
+          "properties": {
+            "required": {
+              "type": "boolean",
+              "default": false
+            },
+            "minApprovals": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "requireTests": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "specReview": {
+          "type": "object",
+          "description": "Collaborative spec review workflow configuration. When enabled, specs go through a review cycle (draft → in-review → approved) before implementation.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable collaborative spec review workflow. Falls back to reviewRequired if not set."
+            },
+            "minApprovals": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10,
+              "default": 1,
+              "description": "Number of approvals required before a spec can proceed to implementation"
+            },
+            "allowSelfApproval": {
+              "type": "boolean",
+              "default": false,
+              "description": "Allow spec authors to self-review and self-approve. Enables solo developers to use the review workflow. Self-approvals produce a distinct 'self-approved' status."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "implementation": {
+      "type": "object",
+      "description": "Implementation behavior settings",
+      "properties": {
+        "autoCommit": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically commit changes after completing tasks"
+        },
+        "createPR": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically create pull request when implementation is complete"
+        },
+        "delegationThreshold": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "default": 4,
+          "description": "Complexity score threshold for auto task delegation. Score formula: sum(effort_weights) + floor(distinct_files / 5). Set to 1 to delegate on every spec (always-on equivalent). Max 20 -- see docs for disabling delegation."
+        },
+        "validateReferences": {
+          "type": "string",
+          "enum": ["off", "warn", "strict"],
+          "default": "warn",
+          "maxLength": 10,
+          "description": "Validate file paths and code references in spec against codebase before implementation. off: skip. warn: notify and continue. strict: block on unresolved references."
+        },
+        "gitCheckpointing": {
+          "type": "boolean",
+          "default": false,
+          "description": "Commit at phase boundaries (spec-created, implemented, completed). Three commits max per spec run. Complements autoCommit which commits per-task."
+        },
+        "pipelineMaxCycles": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 3,
+          "description": "Maximum Phase 3 to Phase 4 iteration cycles in pipeline mode. Pipeline stops after this many cycles even if criteria are unmet."
+        },
+        "evaluation": {
+          "type": "object",
+          "description": "Adversarial evaluation configuration. When enabled, Phase 2 exit gate scores spec quality and Phase 4A scores implementation quality using scored dimensions with hard thresholds and feedback loops.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Enable adversarial evaluation. When false, skip both evaluation touchpoints and use legacy Phase 4 checkbox verification."
+            },
+            "minScore": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10,
+              "default": 7,
+              "description": "Minimum quality dimension score (1-10) required to pass evaluation."
+            },
+            "maxIterations": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5,
+              "default": 2,
+              "description": "Maximum evaluation-remediation iterations before proceeding to next phase."
+            },
+            "perTask": {
+              "type": "boolean",
+              "default": false,
+              "description": "Run implementation evaluation after each task instead of after all tasks."
+            },
+            "exerciseTests": {
+              "type": "boolean",
+              "default": true,
+              "description": "Whether the implementation evaluator should run the project test suite."
+            }
+          },
+          "additionalProperties": false
+        },
+        "learnings": {
+          "type": "object",
+          "description": "Production learnings configuration. Controls capture and surfacing of post-deployment discoveries.",
+          "properties": {
+            "maxSurfaced": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10,
+              "default": 3,
+              "description": "Maximum number of learnings surfaced during Phase 1 loading"
+            },
+            "severityThreshold": {
+              "type": "string",
+              "enum": ["all", "medium", "high", "critical"],
+              "default": "medium",
+              "maxLength": 10,
+              "description": "Minimum severity level to surface learnings. Critical/high always surface regardless."
+            },
+            "capturePrompt": {
+              "type": "string",
+              "enum": ["auto", "manual", "off"],
+              "default": "auto",
+              "maxLength": 10,
+              "description": "When to prompt for learning capture. auto: Phase 4 + bugfix. manual: only /specops learn. off: disabled."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "modules": {
+      "type": "object",
+      "description": "Module-specific configuration for monorepo/multi-module projects",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": {
+          "type": "object",
+          "properties": {
+            "specsDir": {
+              "type": "string",
+              "maxLength": 200,
+              "pattern": "^(?!.*\\.\\./)[a-zA-Z0-9._][a-zA-Z0-9._/-]*$",
+              "description": "Specs directory for this module"
+            },
+            "conventions": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "maxItems": 30,
+              "description": "Module-specific conventions"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "_installedVersion": {
+      "type": "string",
+      "maxLength": 20,
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "SpecOps version that was installed. Written by installers, do not edit manually."
+    },
+    "_installedAt": {
+      "type": "string",
+      "maxLength": 30,
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of when SpecOps was installed. Written by installers, do not edit manually."
+    },
+    "dependencySafety": {
+      "type": "object",
+      "description": "Dependency safety verification. Controls CVE scanning, EOL detection, and best practices checks.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the dependency safety gate in Phase 2. Set to false to disable."
+        },
+        "severityThreshold": {
+          "type": "string",
+          "enum": ["strict", "medium", "low"],
+          "default": "medium",
+          "maxLength": 10,
+          "description": "Severity level that blocks implementation. strict: block on any. medium: block on Critical/High. low: warn only."
+        },
+        "autoFix": {
+          "type": "boolean",
+          "default": false,
+          "description": "Attempt automatic remediation (e.g., npm audit fix) before re-evaluating findings."
+        },
+        "allowedAdvisories": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 100
+          },
+          "maxItems": 50,
+          "description": "CVE IDs that are acknowledged and excluded from blocking. Maximum 50 entries."
+        },
+        "scanScope": {
+          "type": "string",
+          "enum": ["spec", "project"],
+          "default": "spec",
+          "maxLength": 10,
+          "description": "Scope of dependency scan. spec: only ecosystems relevant to current spec. project: all detected ecosystems."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

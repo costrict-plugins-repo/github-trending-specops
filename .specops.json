@@ -1,0 +1,20 @@
+{
+  "specsDir": ".specops",
+  "vertical": "builder",
+  "team": {
+    "conventions": [
+      "Conventional commits: feat:, fix:, chore:, docs:, test:, refactor:",
+      "Core files must use abstract operations from core/tool-abstraction.md only",
+      "Never edit generated platform output files directly",
+      "All JSON schema objects must use additionalProperties: false"
+    ],
+    "reviewRequired": false,
+    "taskTracking": "github"
+  },
+  "implementation": {
+    "autoCommit": false,
+    "createPR": false
+  },
+  "_installedVersion": "1.6.0",
+  "_installedAt": "2026-03-26T15:37:07Z"
+}

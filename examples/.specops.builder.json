@@ -1,0 +1,8 @@
+{
+  "specsDir": ".specops",
+  "vertical": "builder",
+  "implementation": {
+    "autoCommit": false,
+    "createPR": true
+  }
+}

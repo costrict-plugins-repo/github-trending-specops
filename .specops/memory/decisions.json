@@ -1,0 +1,225 @@
+{
+  "version": 1,
+  "decisions": [
+    {
+      "specId": "ears-notation",
+      "specType": "feature",
+      "number": 1,
+      "decision": "EARS patterns as HTML comments in template",
+      "rationale": "Keeps template clean while providing pattern reference to agents \u2014 comments are invisible in rendered markdown but visible to the LLM reading the file",
+      "task": "Task 1",
+      "date": "2026-03-07",
+      "completedAt": "2026-03-07T12:30:00Z"
+    },
+    {
+      "specId": "ears-notation",
+      "specType": "feature",
+      "number": 2,
+      "decision": "Progress Checklist kept optional",
+      "rationale": "Design specified checkboxes as optional derivative of EARS; implemented as separate section agents can include or skip based on simplicity principle",
+      "task": "Task 1",
+      "date": "2026-03-07",
+      "completedAt": "2026-03-07T12:30:00Z"
+    },
+    {
+      "specId": "drift-detection",
+      "specType": "feature",
+      "number": 1,
+      "decision": "Used H3 headings for drift checks instead of H4 with Check N: prefix",
+      "rationale": "Heading-level markers prevent substring collision in validators (Gap 13). H4 Check N: naming was verbose and the prefix added no semantic value.",
+      "task": "Task 1 / Task 6",
+      "date": "2026-03-08",
+      "completedAt": "2026-03-08T09:36:18Z"
+    },
+    {
+      "specId": "drift-detection",
+      "specType": "feature",
+      "number": 2,
+      "decision": "Reconcile mode requires canAskInteractive: true; audit works on all platforms",
+      "rationale": "Audit is read-only and produces a report regardless of platform. Reconcile makes destructive edits to tasks.md and must confirm each repair \u2014 requires interactive input.",
+      "task": "Task 1",
+      "date": "2026-03-08",
+      "completedAt": "2026-03-08T09:36:18Z"
+    },
+    {
+      "specId": "drift-detection",
+      "specType": "feature",
+      "number": 3,
+      "decision": "All-specs audit targets status != completed instead of all specs",
+      "rationale": "Completed specs are frozen \u2014 auditing them for staleness would always produce false Warnings. Only active specs need drift detection.",
+      "task": "Task 1",
+      "date": "2026-03-08",
+      "completedAt": "2026-03-08T09:36:18Z"
+    },
+    {
+      "specId": "ast-based-repo-map",
+      "specType": "feature",
+      "number": 1,
+      "decision": "Used step 3.5 notation instead of renumbering Phase 1 steps",
+      "rationale": "Other modules (memory.md) reference step 4 by number; renumbering would break those references",
+      "task": "Task 2",
+      "date": "2026-03-14",
+      "completedAt": "2026-03-14T18:36:14Z"
+    },
+    {
+      "specId": "ast-based-repo-map",
+      "specType": "feature",
+      "number": 2,
+      "decision": "Did not add core/repo-map.md to CLAUDE.md security-sensitive files list",
+      "rationale": "Follows same non-sensitive pattern as core/steering.md and core/memory.md which are also not in that list",
+      "task": "Task 7",
+      "date": "2026-03-14",
+      "completedAt": "2026-03-14T18:36:14Z"
+    },
+    {
+      "specId": "workflow-enforcement-gates",
+      "specType": "feature",
+      "number": 1,
+      "decision": "Changed validation marker from lowercase 'implementation gate' to title-case 'Implementation gate'",
+      "rationale": "Phase 3 restructure changed 'Check the implementation gate:' to '**Implementation gates**', breaking the lowercase marker. The review module's '### Implementation Gate' still contains the title-case form.",
+      "task": "Task 6",
+      "date": "2026-03-15",
+      "completedAt": "2026-03-15T10:35:03Z"
+    },
+    {
+      "specId": "install-integrity-verification",
+      "specType": "feature",
+      "number": 1,
+      "decision": "Added || true to grep in verify_file for set -e compatibility",
+      "rationale": "grep -F returns exit code 1 when no match found, which fails under set -e pipefail. The || true ensures missing checksum entries produce a warning instead of aborting",
+      "task": "Task 5",
+      "date": "2026-03-17",
+      "completedAt": "2026-03-17T03:54:42Z"
+    },
+    {
+      "specId": "context-aware-dispatch",
+      "specType": "feature",
+      "number": 1,
+      "decision": "SKILL.md becomes dispatcher, monolithic preserved as SKILL.monolithic.md",
+      "rationale": "Backward compatibility: old installs work with monolithic; new installs get dispatcher + modes",
+      "task": "Task 3",
+      "date": "2026-03-21",
+      "completedAt": "2026-03-21T07:22:29Z"
+    },
+    {
+      "specId": "context-aware-dispatch",
+      "specType": "feature",
+      "number": 2,
+      "decision": "Mode file paths use RUN_COMMAND with cat fallback for both skill directories",
+      "rationale": "Mode files install alongside SKILL.md; Read tool needs actual installed path, not project-relative path",
+      "task": "Task 3",
+      "date": "2026-03-21",
+      "completedAt": "2026-03-21T07:22:29Z"
+    },
+    {
+      "specId": "dependency-safety-gate",
+      "specType": "feature",
+      "number": 1,
+      "decision": "Audit artifact template defined inline in core/dependency-safety.md, not in core/templates/",
+      "rationale": "generator/generate.py auto-loads ALL core/templates/*.md into _templates dict \u2014 adding a file there would cause it to be loaded as a spec-type template",
+      "task": "Task 1",
+      "date": "2026-03-21",
+      "completedAt": "2026-03-21T09:07:08Z"
+    },
+    {
+      "specId": "dependency-safety-gate",
+      "specType": "feature",
+      "number": 2,
+      "decision": "DEPENDENCY_SAFETY_MARKERS added to both validate_platform() and cross-platform consistency loop in same commit",
+      "rationale": "Gap 31 pattern \u2014 markers must be in both locations to avoid validator/consistency check mismatch",
+      "task": "Task 9",
+      "date": "2026-03-21",
+      "completedAt": "2026-03-21T09:07:08Z"
+    },
+    {
+      "specId": "exit-plan-mode-hook",
+      "specType": "feature",
+      "number": 1,
+      "decision": "Used nested hooks schema (matcher + hooks array with type: command) instead of flat matcher + command",
+      "rationale": "Claude Code settings.json schema validation requires entries in hooks.PostToolUse to have a hooks array of typed hook objects, not a flat command string",
+      "task": "Task 1",
+      "date": "2026-03-21",
+      "completedAt": "2026-03-21T14:46:03Z"
+    },
+    {
+      "specId": "from-plan-enforcement-checklist",
+      "specType": "feature",
+      "number": 1,
+      "decision": "Inline enforcement checks in from-plan.md rather than shared module",
+      "rationale": "Dispatcher checks stop on failure; from-plan checks auto-remediate. Same 8 categories but divergent behavior at each call site. Shared module would be abstraction used twice with different behavior.",
+      "task": "Task 1",
+      "date": "2026-03-22",
+      "completedAt": "2026-03-22T17:18:51Z"
+    },
+    {
+      "specId": "plan-mode-blocking-enforcement",
+      "specType": "feature",
+      "number": 1,
+      "decision": "Used fp.startswith(a) instead of a in fp for allowed path prefix matching in PreToolUse guard",
+      "rationale": "Design used any(a in fp for a in allowed) which could match substrings anywhere in the path. startswith is more precise for path prefix checking and prevents false positives.",
+      "task": "Task 2",
+      "date": "2026-03-28",
+      "completedAt": "2026-03-28T05:18:32Z"
+    },
+    {
+      "specId": "plan-mode-blocking-enforcement",
+      "specType": "feature",
+      "number": 2,
+      "decision": "PostToolUse hook replacement (not skip) when specops-hook marker already exists",
+      "rationale": "Old installer skipped if existing hook found; new installer replaces advisory hook with marker-creating version, ensuring upgrades apply correctly.",
+      "task": "Task 5",
+      "date": "2026-03-28",
+      "completedAt": "2026-03-28T05:18:32Z"
+    },
+    {
+      "specId": "adversarial-evaluation",
+      "specType": "feature",
+      "number": 1,
+      "decision": "Module size 15KB above 5KB target",
+      "rationale": "Comparable to learnings.md (15KB), memory.md (16KB), decomposition.md (17KB). Content necessary for evaluator to function correctly.",
+      "task": "Task 1",
+      "date": "2026-03-27",
+      "completedAt": "2026-03-27"
+    },
+    {
+      "specId": "adversarial-evaluation",
+      "specType": "feature",
+      "number": 2,
+      "decision": "Evaluation template added to mode-manifest templates array",
+      "rationale": "Templates need to be in both modules and templates arrays for proper rendering in mode-based architecture.",
+      "task": "Task 4",
+      "date": "2026-03-27",
+      "completedAt": "2026-03-27"
+    },
+    {
+      "specId": "dependency-introduction-gate",
+      "specType": "feature",
+      "number": 1,
+      "decision": "Always-active gate with no config knobs -- no enabled/disabled switch",
+      "rationale": "Config flags without deterministic workflow instructions are dead features (feedback pattern). The gate passes trivially when no new dependencies exist. No legitimate reason to bypass dependency governance.",
+      "task": "Task 1",
+      "date": "2026-03-28",
+      "completedAt": "2026-03-28T11:21:31Z"
+    },
+    {
+      "specId": "dependency-introduction-gate",
+      "specType": "feature",
+      "number": 2,
+      "decision": "Separate core/dependency-introduction.md module rather than extending dependency-safety.md",
+      "rationale": "Different trigger points (safety at 6.5, introduction at 5.8 and throughout Phase 3), different data flows, different purposes (audit existing vs govern new). Combining would create an oversized module.",
+      "task": "Task 1",
+      "date": "2026-03-28",
+      "completedAt": "2026-03-28T11:21:31Z"
+    },
+    {
+      "specId": "dependency-introduction-gate",
+      "specType": "feature",
+      "number": 3,
+      "decision": "Agent instruction enforcement pattern for Phase 3 (not code interception)",
+      "rationale": "SpecOps operates at the instruction/prompt level. Agent is told to verify before executing install commands. Same enforcement pattern as all other SpecOps gates. Adversarial evaluation catches violations.",
+      "task": "Task 1",
+      "date": "2026-03-28",
+      "completedAt": "2026-03-28T11:21:31Z"
+    }
+  ]
+}

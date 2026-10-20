@@ -1,0 +1,200 @@
+{
+  "version": 1,
+  "decisionCategories": [
+    {
+      "category": "template structure",
+      "specs": [
+        "ears-notation",
+        "drift-detection"
+      ],
+      "count": 2,
+      "lesson": "Template and module structure decisions (HTML comments, heading levels) have downstream validator implications — heading text must match marker strings exactly"
+    },
+    {
+      "category": "platform adaptation",
+      "specs": [
+        "ears-notation",
+        "drift-detection",
+        "task-delegation"
+      ],
+      "count": 3,
+      "lesson": "Features split into interactive and non-interactive paths — read-only features work everywhere, destructive/interactive features require canAskInteractive. Task delegation extends this with canDelegateTask for sub-agent spawning."
+    },
+    {
+      "category": "step numbering",
+      "specs": [
+        "drift-detection",
+        "ast-based-repo-map",
+        "enforcement-roadmap",
+        "project-type-awareness",
+        "workflow-automation-suite"
+      ],
+      "count": 5,
+      "lesson": "Avoid renumbering Phase steps when inserting new logic — use sub-step notation (e.g., step 5.5, 5.6) to prevent breaking cross-module references"
+    },
+    {
+      "category": "marker alignment",
+      "specs": [
+        "drift-detection",
+        "workflow-enforcement-gates",
+        "enforcement-roadmap",
+        "project-type-awareness",
+        "workflow-automation-suite",
+        "dependency-safety-gate"
+      ],
+      "count": 6,
+      "lesson": "Validator markers are case-sensitive substrings — when adding new marker constants, add to BOTH per-platform validation AND the cross-platform consistency loop in the same commit"
+    },
+    {
+      "category": "shell safety",
+      "specs": [
+        "install-integrity-verification"
+      ],
+      "count": 1,
+      "lesson": "grep returns exit code 1 when no match found — guard with || true under set -e pipefail to prevent unexpected script abort"
+    }
+  ],
+  "fileOverlaps": [
+    {
+      "file": "core/workflow.md",
+      "specs": [
+        "ears-notation",
+        "bugfix-regression-analysis",
+        "steering-files",
+        "drift-detection",
+        "ast-based-repo-map",
+        "task-delegation",
+        "workflow-enforcement-gates",
+        "enforcement-roadmap",
+        "project-type-awareness",
+        "proxy-metrics",
+        "workflow-automation-suite",
+        "dependency-safety-gate"
+      ],
+      "count": 12
+    },
+    {
+      "file": "generator/validate.py",
+      "specs": [
+        "bugfix-regression-analysis",
+        "steering-files",
+        "drift-detection",
+        "ast-based-repo-map",
+        "task-delegation",
+        "workflow-enforcement-gates",
+        "enforcement-roadmap",
+        "project-type-awareness",
+        "proxy-metrics",
+        "workflow-automation-suite",
+        "dependency-safety-gate"
+      ],
+      "count": 11
+    },
+    {
+      "file": "generator/generate.py",
+      "specs": [
+        "steering-files",
+        "drift-detection",
+        "ast-based-repo-map",
+        "task-delegation",
+        "proxy-metrics",
+        "workflow-automation-suite",
+        "dependency-safety-gate"
+      ],
+      "count": 7
+    },
+    {
+      "file": "tests/test_platform_consistency.py",
+      "specs": [
+        "steering-files",
+        "drift-detection",
+        "ast-based-repo-map",
+        "workflow-enforcement-gates",
+        "project-type-awareness",
+        "proxy-metrics",
+        "workflow-automation-suite"
+      ],
+      "count": 7
+    },
+    {
+      "file": "core/config-handling.md",
+      "specs": [
+        "workflow-enforcement-gates",
+        "enforcement-roadmap",
+        "dependency-safety-gate"
+      ],
+      "count": 3
+    },
+    {
+      "file": "core/task-tracking.md",
+      "specs": [
+        "task-delegation",
+        "enforcement-roadmap"
+      ],
+      "count": 2
+    },
+    {
+      "file": "core/verticals.md",
+      "specs": [
+        "enforcement-roadmap",
+        "project-type-awareness"
+      ],
+      "count": 2
+    },
+    {
+      "file": "core/templates/implementation.md",
+      "specs": [
+        "enforcement-roadmap",
+        "project-type-awareness"
+      ],
+      "count": 2
+    },
+    {
+      "file": "core/tool-abstraction.md",
+      "specs": [
+        "ast-based-repo-map",
+        "task-delegation"
+      ],
+      "count": 2
+    },
+    {
+      "file": "core/templates/bugfix.md",
+      "specs": [
+        "ears-notation",
+        "bugfix-regression-analysis"
+      ],
+      "count": 2
+    },
+    {
+      "file": "core/steering.md",
+      "specs": [
+        "steering-files",
+        "ast-based-repo-map",
+        "dependency-safety-gate"
+      ],
+      "count": 3
+    },
+    {
+      "file": "docs/COMMANDS.md",
+      "specs": [
+        "local-memory-layer",
+        "ast-based-repo-map"
+      ],
+      "count": 2
+    }
+  ],
+  "learningPatterns": [
+    {
+      "category": "design",
+      "specs": ["drift-detection", "dependency-safety-gate", "exit-plan-mode-hook"],
+      "count": 3,
+      "summary": "Design-category learnings recur across specs: heading-level collisions in validator markers, generator auto-loading of template files, and Claude Code hooks schema structure. Pattern: implementation constraints of downstream systems (validator, generator, hooks) are discovered only at integration time."
+    },
+    {
+      "category": "reliability",
+      "specs": ["workflow-enforcement-gates", "context-aware-dispatch", "production-learnings"],
+      "count": 3,
+      "summary": "Reliability-category learnings recur across specs: config flags without workflow annotations become dead features, marker constants drift between validate.py and tests, and three-way sync requirements emerge. Pattern: multi-file consistency obligations are discovered only when one location is missed."
+    }
+  ]
+}
